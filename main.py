@@ -10,13 +10,24 @@ from bs4 import BeautifulSoup
 
 CARDINALI_DOMAIN = 'https://www.cardinali.com.br'
 USP_MAT_COORDINATES = (-22.0062, -47.89518)
+GRAPH_SAO_CARLOS = None
 
 if os.path.isfile('./scgraph/sc.graphml'):
-    print('ok')
+    print('Graph of the city already created, loading it.')
+    try:
+        GRAPH_SAO_CARLOS = ox.load_graphml('./scgraph/sc.graphml')
+    except IOError as error:
+        raise SystemExit(error)
+else:
+    print('Graph has not been created, creating it.')
+    GRAPH_SAO_CARLOS = ox.graph_from_place("São Carlos, São Paulo, Brazil", network_type='walk')
+    nx.set_edge_attributes(GRAPH_SAO_CARLOS, 5.1, 'speed_kph')
+    GRAPH_SAO_CARLOS = ox.add_edge_travel_times(GRAPH_SAO_CARLOS)
 
-GRAPH_SAO_CARLOS = ox.graph_from_place("São Carlos, São Paulo, Brazil", network_type='walk', simplify=False)
-nx.set_edge_attributes(GRAPH_SAO_CARLOS, 5.1, 'speed_kph')
-GRAPH_SAO_CARLOS = ox.add_edge_travel_times(GRAPH_SAO_CARLOS)
+    try:
+        ox.save_graphml(GRAPH_SAO_CARLOS, "./scgraph/sc.graphml")
+    except IOError as error:
+        raise SystemExit(error)
 
 #origin_node = ox.nearest_nodes(graph_sao_carlos, X=origin[1], Y=origin[0])
 #destination_node = ox.nearest_nodes(graph_sao_carlos, X=destino[1], Y=destino[0])
@@ -44,6 +55,8 @@ def card_process(card : BeautifulSoup, csv_file : 'csv._writer') -> None:
 
     #The house name is always in the singular h2 of the card
     house_name = card.find('h2').string.lstrip().rstrip()
+    location = card.find(class_="card-bairro-cidade my-1 pt-1")
+    print(location.contents[1])
 
     low_hs_name = house_name.lower()
     if 'comercial' in low_hs_name or 'terreno' in low_hs_name:
@@ -61,7 +74,6 @@ def card_process(card : BeautifulSoup, csv_file : 'csv._writer') -> None:
 
     csv_file.writerow([house_name, house_rent_value])
 
-
 def scrape_cardinali() -> None:
     pag = 1
     cur_card = 1
@@ -75,7 +87,13 @@ def scrape_cardinali() -> None:
 
         while True:
             print(f'{'\033[0;31m'}Currently on page {pag}{'\033[0m'}')
-            response = requests.get(f'{CARDINALI_DOMAIN}/pesquisa-de-imoveis/?busca_free=&locacao_venda=L&id_cidade[]=190&dormitorio=&garagem=&finalidade=residencial&a_min=&a_max=&vmi={vmin}&vma={vmax}&ordem=1&&pag={pag}')
+            response = None
+            
+            try:
+                response = requests.get(f'{CARDINALI_DOMAIN}/pesquisa-de-imoveis/?busca_free=&locacao_venda=L&id_cidade[]=190&dormitorio=&garagem=&finalidade=residencial&a_min=&a_max=&vmi={vmin}&vma={vmax}&ordem=1&&pag={pag}')
+            except requests.exceptions.RequestException as error:
+                raise SystemExit(error)
+            
             houses_soup = BeautifulSoup(response.text, 'html.parser')
 
             #Separates all of the cards of the main page
