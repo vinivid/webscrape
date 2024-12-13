@@ -1,6 +1,5 @@
 import csv
 import _csv
-from datetime import timedelta
 
 import osmnx as ox
 import networkx as nx
@@ -8,10 +7,11 @@ import requests
 from bs4 import BeautifulSoup
 
 CARDINALI_DOMAIN = 'https://www.cardinali.com.br'
+USP_MAT_COORDINATES = (-22.0062, -47.89518)
 
-graph_sao_carlos = ox.graph_from_place("São Carlos, São Paulo, Brazil", network_type='walk', simplify=False)
-nx.set_edge_attributes(graph_sao_carlos, 5.1, 'speed_kph')
-graph_sao_carlos = ox.add_edge_travel_times(graph_sao_carlos)
+#graph_sao_carlos = ox.graph_from_place("São Carlos, São Paulo, Brazil", network_type='walk', simplify=False)
+#nx.set_edge_attributes(graph_sao_carlos, 5.1, 'speed_kph')
+#graph_sao_carlos = ox.add_edge_travel_times(graph_sao_carlos)
 
 #destino = ox.geocode("Avenida Trabalhador São-Carlense")
 #origin = ox.geocode("Vila Celina, Monjolinho, São Carlos, Região Imediata de São Carlos, Região Geográfica Intermediária de Araraquara, São Paulo, Southeast Region, Brazil")
@@ -28,7 +28,7 @@ graph_sao_carlos = ox.add_edge_travel_times(graph_sao_carlos)
 #distance_in_kilometers = distance_in_meters / 1000
 #print("distance in kilometers", distance_in_kilometers)
 
-def card_process(page_contents, csv_file : '_csv._writer') -> None:
+def card_process(card : BeautifulSoup, csv_file : 'csv._writer') -> None:
     """
         Process the cards from cardinali page, writing its contents to a
     csv file.
@@ -40,34 +40,58 @@ def card_process(page_contents, csv_file : '_csv._writer') -> None:
     to a csv.
     """
 
-    for card in page_contents:
-        #The house name is always in the singular h2 of the card
-        house_name = card.find('h2').string.lstrip().rstrip()
+    #The house name is always in the singular h2 of the card
+    house_name = card.find('h2').string.lstrip().rstrip()
 
-        low_hs_name = house_name.lower()
-        if 'comercial' in low_hs_name or 'terreno' in low_hs_name:
-            continue
+    low_hs_name = house_name.lower()
+    if 'comercial' in low_hs_name or 'terreno' in low_hs_name:
+        return
 
-        #The path that contains the house info is in the links of the carrousell
-        house_info_path = card.find('a')['href']
-        house_info_soup = BeautifulSoup(requests.get(f'{CARDINALI_DOMAIN}/{house_info_path}').text, 'html.parser')
+    house_name.replace(',','.')
 
-        #The rent value is located within a block of values, it is always contained in strong
-        house_rent_block = house_info_soup.find(class_="valores_imovel p-3")
-        house_rent_value = house_rent_block.find('strong').string
+    #The path that contains the house info is in the links of the carrousell
+    house_info_path = card.find('a')['href']
+    house_info_soup = BeautifulSoup(requests.get(f'{CARDINALI_DOMAIN}/{house_info_path}').text, 'html.parser')
 
-        csv_file.writerow([house_name, house_rent_value])
+    #The rent value is located within a block of values, it is always contained in strong
+    house_rent_block = house_info_soup.find(class_="valores_imovel p-3")
+    house_rent_value = house_rent_block.find('strong').string.replace(',', '.')
+
+    csv_file.writerow([house_name, house_rent_value])
 
 
 def scrape_cardinali() -> None:
-    response = requests.get(f'{CARDINALI_DOMAIN}/pesquisa-de-imoveis/?locacao_venda=L&id_cidade[]=190&finalidade=residencial&dormitorio=&garagem=&vmi=&vma=1.300%2C00&ordem=1&&pag=3')
-    soup = BeautifulSoup(response.text, 'html.parser')
+    pag = 1
+    cur_card = 1
+    vmin = 200
+    vmax = 1500
 
-    #Seprating the house blocks, not sure if the return of find all
-    #really is a list of BeautifulSoup
-    all_blocks : list[BeautifulSoup] = soup.find_all('div', class_="muda_card1 ms-lg-0 col-12 col-md-12 col-lg-6 col-xl-4 mt-4 d-flex align-self-stretch justify-content-center")
+    print(f'{'\033[0;31m'}Scraping Cardinali{'\033[0m'}')
 
-    with open('ok.tst', 'w', newline='') as c:
-        jik = csv.writer(c, delimiter=' ')
 
-        card_process(all_blocks, jik)
+    with open('cardinali.csv', 'w', newline='') as cardinali_csv:
+        ccsv = csv.writer(cardinali_csv, delimiter=',')
+
+        while True:
+            print(f'{'\033[0;31m'}Currently on page {pag}{'\033[0m'}')
+            response = requests.get(f'{CARDINALI_DOMAIN}/pesquisa-de-imoveis/?busca_free=&locacao_venda=L&id_cidade[]=190&dormitorio=&garagem=&finalidade=residencial&a_min=&a_max=&vmi={vmin}&vma={vmax}&ordem=1&&pag={pag}')
+            houses_soup = BeautifulSoup(response.text, 'html.parser')
+
+            #Separates all of the cards of the main page
+            card_blocks : list[BeautifulSoup] = houses_soup.find_all('div', class_="muda_card1 ms-lg-0 col-12 col-md-12 col-lg-6 col-xl-4 mt-4 d-flex align-self-stretch justify-content-center")
+
+            for card in card_blocks:
+                print(f'Scraping page:{pag} Card: {cur_card}')
+                card_process(card, ccsv)
+                cur_card += 1
+
+            pagination = houses_soup.find(class_='pagination')
+
+            #When it is the last page the button to go to the next page receives the class disabled
+            #Will not work if there is less than one page
+            if pag != 1 and pagination.find(class_='disabled') != None:
+                break
+
+            pag += 1
+
+scrape_cardinali()
