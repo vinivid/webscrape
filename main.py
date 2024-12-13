@@ -1,5 +1,7 @@
 import csv
+#Used only for type hints
 import _csv
+import os
 
 import osmnx as ox
 import networkx as nx
@@ -9,12 +11,12 @@ from bs4 import BeautifulSoup
 CARDINALI_DOMAIN = 'https://www.cardinali.com.br'
 USP_MAT_COORDINATES = (-22.0062, -47.89518)
 
-#graph_sao_carlos = ox.graph_from_place("São Carlos, São Paulo, Brazil", network_type='walk', simplify=False)
-#nx.set_edge_attributes(graph_sao_carlos, 5.1, 'speed_kph')
-#graph_sao_carlos = ox.add_edge_travel_times(graph_sao_carlos)
+if os.path.isfile('./scgraph/sc.graphml'):
+    print('ok')
 
-#destino = ox.geocode("Avenida Trabalhador São-Carlense")
-#origin = ox.geocode("Vila Celina, Monjolinho, São Carlos, Região Imediata de São Carlos, Região Geográfica Intermediária de Araraquara, São Paulo, Southeast Region, Brazil")
+GRAPH_SAO_CARLOS = ox.graph_from_place("São Carlos, São Paulo, Brazil", network_type='walk', simplify=False)
+nx.set_edge_attributes(GRAPH_SAO_CARLOS, 5.1, 'speed_kph')
+GRAPH_SAO_CARLOS = ox.add_edge_travel_times(GRAPH_SAO_CARLOS)
 
 #origin_node = ox.nearest_nodes(graph_sao_carlos, X=origin[1], Y=origin[0])
 #destination_node = ox.nearest_nodes(graph_sao_carlos, X=destino[1], Y=destino[0])
@@ -67,7 +69,6 @@ def scrape_cardinali() -> None:
     vmax = 1500
 
     print(f'{'\033[0;31m'}Scraping Cardinali{'\033[0m'}')
-
 
     with open('cardinali.csv', 'w', newline='') as cardinali_csv:
         ccsv = csv.writer(cardinali_csv, delimiter=',')
