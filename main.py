@@ -12,34 +12,50 @@ from bs4 import BeautifulSoup
 
 CARDINALI_DOMAIN = 'https://www.cardinali.com.br'
 USP_COORDINATES = (-22.0062, -47.89518)
-GRAPH_SAO_CARLOS = None
 
-geocode_db = sqll.connect('./db/geocode.db')
-gcd_cur = geocode_db.cursor()
-
-gcd_db_res = gcd_cur.execute("CREATE TABLE IF NOT EXISTS geocode(location TEXT UNIQUE, coord1 REAL, coord2 REAL)")
-
-if os.path.isfile('./scgraph/sc.graphml'):
-    print('Graph of the city already created, loading it.')
-    try:
-        GRAPH_SAO_CARLOS = ox.load_graphml('./scgraph/sc.graphml')
-    except IOError as error:
-        raise SystemExit(error)
-else:
-    print('Graph has not been created, creating it.')
-    GRAPH_SAO_CARLOS = ox.graph_from_place("São Carlos, São Paulo, Brazil", network_type='walk')
-    nx.set_edge_attributes(GRAPH_SAO_CARLOS, 4.6, 'speed_kph')
-    GRAPH_SAO_CARLOS = ox.distance.add_edge_lengths(GRAPH_SAO_CARLOS)
-    GRAPH_SAO_CARLOS = ox.add_edge_travel_times(GRAPH_SAO_CARLOS)
+def init_sqll_db() -> tuple[sqll.Connection, sqll.Cursor]:
+    """
+    Initializes the database of coordinates of the city so you do not need to 
+    acess the Nominatian API for repeteadet locations.
+    """
 
     try:
-        ox.save_graphml(GRAPH_SAO_CARLOS, "./scgraph/sc.graphml")
-    except IOError as error:
+        geocode_db = sqll.connect('./db/geocode.db')
+        gcd_cur = geocode_db.cursor()
+        gcd_db_res = gcd_cur.execute("CREATE TABLE IF NOT EXISTS geocode(location TEXT UNIQUE, coord1 REAL, coord2 REAL)")
+        return geocode_db, gcd_cur
+    except sqll.Error as error:
         raise SystemExit(error)
-    
-USP_MAT_NODE = ox.nearest_nodes(GRAPH_SAO_CARLOS, X=USP_COORDINATES[1], Y=USP_COORDINATES[0])
 
-def card_process(card : BeautifulSoup, csv_file : '_csv._writer') -> None:
+def init_map_of_city() -> nx.MultiDiGraph:
+    """
+        Creates the Graph that represents the map of the city. 
+    """
+
+    if os.path.isfile('./scgraph/sc.graphml'):
+        print('Graph of the city already created, loading it.')
+        try:
+            GRAPH_SAO_CARLOS = ox.load_graphml('./scgraph/sc.graphml')
+            return GRAPH_SAO_CARLOS
+        except IOError as error:
+            raise SystemExit(error)
+    else:
+        print('Graph has not been created, creating it.')
+        GRAPH_SAO_CARLOS = ox.graph_from_place("São Carlos, São Paulo, Brazil", network_type='walk')
+        nx.set_edge_attributes(GRAPH_SAO_CARLOS, 4.6, 'speed_kph')
+        GRAPH_SAO_CARLOS = ox.distance.add_edge_lengths(GRAPH_SAO_CARLOS)
+        GRAPH_SAO_CARLOS = ox.add_edge_travel_times(GRAPH_SAO_CARLOS)
+
+        try:
+            ox.save_graphml(GRAPH_SAO_CARLOS, "./scgraph/sc.graphml")
+            return GRAPH_SAO_CARLOS
+        except IOError as error:
+            raise SystemExit(error)
+
+def card_process(card : BeautifulSoup, 
+                 destination , city_graph : nx.MultiDiGraph,
+                 geocode_db : sqll.Connection, geocode_db_cursor : sqll.Cursor,
+                 csv_file : '_csv._writer') -> None:
     """
         Process the cards from cardinali page, writing its contents to a
     csv file.
@@ -83,7 +99,7 @@ def card_process(card : BeautifulSoup, csv_file : '_csv._writer') -> None:
     location : str = card.find(class_="card-bairro-cidade my-1 pt-1").contents[1].string
     location = location[:location.find('-') - 1]
 
-    query_location = gcd_cur.execute("SELECT coord1, coord2 FROM geocode WHERE location LIKE ?", ("'" + location + "'",))
+    query_location = geocode_db_cursor.execute("SELECT coord1, coord2 FROM geocode WHERE location LIKE ?", ("'" + location + "'",))
     house_location = query_location.fetchall()
 
     #Value is not already in databases
@@ -91,7 +107,7 @@ def card_process(card : BeautifulSoup, csv_file : '_csv._writer') -> None:
         print('\t\033[0;33mLocation not already in database. Using Nominatim API and updating it.\033[0m')
         try:
             house_location = ox.geocode(f'{location}, São Carlos, Brazil')
-            gcd_cur.execute("INSERT INTO geocode VALUES (?, ?, ?)", ("'" + location + "'", house_location[0], house_location[1]))
+            geocode_db_cursor.execute("INSERT INTO geocode VALUES (?, ?, ?)", ("'" + location + "'", house_location[0], house_location[1]))
             geocode_db.commit()
             print('\tWaiting 1.1 sec for the Nominatim api')
             time.sleep(1.1)
@@ -104,13 +120,19 @@ def card_process(card : BeautifulSoup, csv_file : '_csv._writer') -> None:
         print("\t\033[0;32mLocation already in database.\033[0m")
         house_location = house_location[0]
 
-    house_node = ox.nearest_nodes(GRAPH_SAO_CARLOS, X=house_location[1], Y=house_location[0])
-    travel_time = nx.shortest_path_length(GRAPH_SAO_CARLOS, house_node, USP_MAT_NODE, weight='travel_time') / 60
-    shortest_distance = nx.shortest_path_length(GRAPH_SAO_CARLOS, house_node, USP_MAT_NODE, weight='length')
+    house_node = ox.nearest_nodes(city_graph, X=house_location[1], Y=house_location[0])
+    travel_time = nx.shortest_path_length(city_graph, house_node, destination, weight='travel_time') / 60
+    shortest_distance = nx.shortest_path_length(city_graph, house_node, destination, weight='length')
 
     csv_file.writerow([house_name, house_rent_value, round(shortest_distance, 1), round(travel_time, 1),f'{CARDINALI_DOMAIN}/{house_info_path}'])
 
 def scrape_cardinali() -> None:
+    SC_GRAPH = init_map_of_city()
+
+    geoc_db, geoc_cur = init_sqll_db()
+
+    USP_MAT_NODE = ox.nearest_nodes(SC_GRAPH, X=USP_COORDINATES[1], Y=USP_COORDINATES[0])
+
     pag = 1
     cur_card = 1
     vmin = 200
@@ -141,7 +163,7 @@ def scrape_cardinali() -> None:
 
             for card in card_blocks:
                 print(f'\033[0;36mScraping page:{pag} Card: {cur_card}\033[0m')
-                card_process(card, ccsv)
+                card_process(card, USP_MAT_NODE, SC_GRAPH, geoc_db, geoc_cur,ccsv)
 
                 cur_card += 1
 
