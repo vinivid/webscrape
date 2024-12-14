@@ -5,3 +5,4 @@ scgraph
 database
 db
 cardinali.csv
+__pycache__
