@@ -3,6 +3,7 @@ import csv
 import _csv
 import os
 import time
+import sqlite3 as sqll
 
 import osmnx as ox
 import networkx as nx
@@ -12,6 +13,11 @@ from bs4 import BeautifulSoup
 CARDINALI_DOMAIN = 'https://www.cardinali.com.br'
 USP_COORDINATES = (-22.0062, -47.89518)
 GRAPH_SAO_CARLOS = None
+
+geocode_db = sqll.connect('./db/geocode.db')
+gcd_cur = geocode_db.cursor()
+
+gcd_db_res = gcd_cur.execute("CREATE TABLE IF NOT EXISTS geocode(location TEXT UNIQUE, coord1 REAL, coord2 REAL)")
 
 if os.path.isfile('./scgraph/sc.graphml'):
     print('Graph of the city already created, loading it.')
@@ -77,23 +83,30 @@ def card_process(card : BeautifulSoup, csv_file : '_csv._writer') -> None:
     location : str = card.find(class_="card-bairro-cidade my-1 pt-1").contents[1].string
     location = location[:location.find('-') - 1]
 
-    try:
-        house_location = ox.geocode(f'{location}, São Carlos, Brazil')
-    except ox._errors.InsufficientResponseError as error:
-        print(f'\t\033[0;31mLocation \033[4m{location}\033[0m \033[0;31mnot on Nominatim\033[0m')
-        print('\tWaiting 1.5 sec for the Nominatim api')
-        time.sleep(1.5)
-        return
+    query_location = gcd_cur.execute("SELECT coord1, coord2 FROM geocode WHERE location LIKE ?", ("'" + location + "'",))
+    house_location = query_location.fetchall()
 
-    tma = time.time()
+    #Value is not already in databases
+    if house_location == []:
+        print('\t\033[0;33mLocation not already in database. Using Nominatim API and updating it.\033[0m')
+        try:
+            house_location = ox.geocode(f'{location}, São Carlos, Brazil')
+            gcd_cur.execute("INSERT INTO geocode VALUES (?, ?, ?)", ("'" + location + "'", house_location[0], house_location[1]))
+            geocode_db.commit()
+            print('\tWaiting 1.1 sec for the Nominatim api')
+            time.sleep(1.1)
+        except ox._errors.InsufficientResponseError as error:
+            print(f'\t\033[0;31mLocation \033[4m{location}\033[0m \033[0;31mnot on Nominatim\033[0m')
+            print('\tWaiting 1.1 sec for the Nominatim api')
+            time.sleep(1.1)
+            return
+    else:
+        print("\t\033[0;32mLocation already in database.\033[0m")
+        house_location = house_location[0]
+
     house_node = ox.nearest_nodes(GRAPH_SAO_CARLOS, X=house_location[1], Y=house_location[0])
     travel_time = nx.shortest_path_length(GRAPH_SAO_CARLOS, house_node, USP_MAT_NODE, weight='travel_time') / 60
     shortest_distance = nx.shortest_path_length(GRAPH_SAO_CARLOS, house_node, USP_MAT_NODE, weight='length')
-    tmb = time.time()
-
-    if tmb - tma < 1.1:
-        print('\tWaiting 1.5 sec for the Nominatim api')
-        time.sleep(1.5)
 
     csv_file.writerow([house_name, house_rent_value, round(shortest_distance, 1), round(travel_time, 1),f'{CARDINALI_DOMAIN}/{house_info_path}'])
 
@@ -143,6 +156,6 @@ def scrape_cardinali() -> None:
         
         end_of_scrape = time.time()
 
-        print(f'\033[0;32mCardinali scraped sucessufuly\nScraping took {((end_of_scrape - start_of_scrape)/60):02f} min\033[0m')
+        print(f'\033[0;32mCardinali scraped sucessufuly\nScraping took {round((end_of_scrape - start_of_scrape)/60, 2)} min\033[0m')
 
 scrape_cardinali()
