@@ -52,8 +52,8 @@ def scrape_cardinali() -> None:
     sc_graph = init_map_of_city()
     geoc_db, geoc_cur = init_sqll_db()
 
-    if not os.path.exists('../scraped_data'):
-        os.makedirs('../scraped_data')
+    if not os.path.exists('./scraped_data'):
+        os.makedirs('./scraped_data')
 
     scrape_cardinali_sc(sc_graph, USP_COORDINATES, geoc_db, geoc_cur)
 
