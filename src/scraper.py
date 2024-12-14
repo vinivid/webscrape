@@ -58,3 +58,9 @@ def scrape_cardinali() -> None:
     scrape_cardinali_sc(sc_graph, USP_COORDINATES, geoc_db, geoc_cur)
 
     geoc_db.close()
+
+def main():
+    scrape_cardinali()
+
+if __name__ == '__main__':
+    main()

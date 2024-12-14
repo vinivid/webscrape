@@ -6,3 +6,5 @@ database
 db
 cardinali.csv
 __pycache__
+build
+src/scrape_imobi.egg-info

@@ -1,0 +1,23 @@
+[build-system]
+requires = [
+    "setuptools", 
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scrape-imobi"
+version = "0.1.0"
+dependencies = [
+    'requests',
+    'bs4',
+    'osmnx',
+    'scikit-learn'
+]
+requires-python = ">=3.11"
+authors = [
+    {name = 'Vínicius Souza Freitas', email = 'frato.vini@gmail.com'}
+]
+description = "Scrapers das imobiliaras de são carlos para um csv."
+
+[project.scripts]
+scrape = "scraper:main"
