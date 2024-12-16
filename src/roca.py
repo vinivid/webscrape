@@ -52,12 +52,8 @@ def process_MuiGrid(mui : BeautifulSoup,
     if not house_rent[0].isdecimal():
         return
 
-    location_info = house_page.find_all(class_="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorInherit").text
-    if location_info[1].text != 'São Carlos':
-        return
+    location = house_page.find_all(class_="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorInherit")[2].text
     
-    location = location_info[2]
-
     house_location = find_loc_coordinates(location, geocode_db, geocode_db_cursor)
     if house_location == None:
         return
