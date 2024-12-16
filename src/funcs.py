@@ -5,9 +5,6 @@ import time
 import osmnx as ox
 import networkx as nx
 
-CARDINALI_DOMAIN = 'https://www.cardinali.com.br'
-USP_COORDINATES = (-22.0062, -47.89518)
-
 def init_sqll_db() -> tuple[sqll.Connection, sqll.Cursor]:
     """
     Initializes the database of coordinates of the city so you do not need to 

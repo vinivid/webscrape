@@ -25,6 +25,7 @@ def card_process(card : BeautifulSoup,
     if 'comercial' in low_hs_name or 'terreno' in low_hs_name:
         return
 
+    house_name = house_name.removeprefix('"').removesuffix('"')
     #The path that contains the house info is in the links of the carrousell
     house_info_path = card.find('a')['href']
 

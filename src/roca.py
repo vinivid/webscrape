@@ -13,19 +13,6 @@ from bs4 import BeautifulSoup
 
 from funcs import find_loc_coordinates
 
-def goto_houses_pages(page : Page, 
-                      lower_bound : int, upper_boud : int
-                      ) -> None:
-    """Uses the main page to acess the houses page, this is necessary
-    so there won't be houses from locations other than são carlos"""
-
-    page.goto("https://roca.com.br/")
-    page.locator('#morefilter-search').click()
-    page.get_by_placeholder('Buscar cidade, bairro, condomínio ou código').type('São Carlos, SP')
-    page.get_by_label('De (R$').type(f'{lower_bound}00')
-    page.get_by_label('Até (R$)').type(f'{upper_boud}00')
-    page.locator('#search-findProperty').click()
-
 def scroll_entire_houses_page(page : Page) -> None:
     "Scroll to the bottom the houses page."
 
@@ -52,14 +39,24 @@ def process_MuiGrid(mui : BeautifulSoup,
                     csv_file : '_csv._writer') -> None:
     
     house_name = mui.find('h2').text
+    house_name = house_name.removeprefix('"').removesuffix('"')
 
     if re.match(r"comercial|terreno", house_name, re.IGNORECASE): 
         return
     
     house_link : str = 'https://roca.com.br' + (mui.find('a', href=True)['href'])
     house_page = BeautifulSoup(requests.get(house_link).text, 'html.parser')
-    house_rent = house_page.find(class_='MuiTypography-root PricesSidebar__CustomTypography-sc-1yjdceo-0 hJGMSK MuiTypography-body1').text   
-    location = house_page.find_all(class_="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorInherit")[2].text
+    house_rent = house_page.find(class_='MuiTypography-root PricesSidebar__CustomTypography-sc-1yjdceo-0 hJGMSK MuiTypography-body1').text
+    house_rent = house_rent.removeprefix('R$ ').replace(',', '.')
+
+    if not house_rent[0].isdecimal():
+        return
+
+    location_info = house_page.find_all(class_="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorInherit").text
+    if location_info[1].text != 'São Carlos':
+        return
+    
+    location = location_info[2]
 
     house_location = find_loc_coordinates(location, geocode_db, geocode_db_cursor)
     if house_location == None:
@@ -68,7 +65,6 @@ def process_MuiGrid(mui : BeautifulSoup,
     house_node = ox.nearest_nodes(city_graph, X=house_location[1], Y=house_location[0])
     travel_time = nx.shortest_path_length(city_graph, house_node, destination, weight='travel_time') / 60
     shortest_distance = nx.shortest_path_length(city_graph, house_node, destination, weight='length')
-    house_rent = house_rent.removeprefix('R$ ').replace(',', '.')
 
     csv_file.writerow(["'" + house_name + "'", house_rent, round(shortest_distance, 1), round(travel_time, 1), house_link])
 
@@ -97,7 +93,7 @@ def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, fl
             page.route(re.compile(r"\.(jpg|png|svg)$"), lambda route: route.abort()) 
 
             while curr_value < end_value:
-                goto_houses_pages(page, curr_value, curr_value + 50)
+                page.goto(f'https://roca.com.br/alugar/sao-carlos-sp/de-{curr_value}.00/ate-{curr_value + 50}.00')
 
                 scroll_entire_houses_page(page)
 
