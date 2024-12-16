@@ -8,3 +8,4 @@ cardinali.csv
 __pycache__
 build
 src/scrape_imobi.egg-info
+scraped_data

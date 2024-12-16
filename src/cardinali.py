@@ -25,8 +25,6 @@ def card_process(card : BeautifulSoup,
     if 'comercial' in low_hs_name or 'terreno' in low_hs_name:
         return
 
-    house_name.replace(',','.')
-
     #The path that contains the house info is in the links of the carrousell
     house_info_path = card.find('a')['href']
 
@@ -55,7 +53,7 @@ def card_process(card : BeautifulSoup,
     travel_time = nx.shortest_path_length(city_graph, house_node, destination, weight='travel_time') / 60
     shortest_distance = nx.shortest_path_length(city_graph, house_node, destination, weight='length')
 
-    csv_file.writerow([house_name, house_rent, round(shortest_distance, 1), round(travel_time, 1),f'{CARDINALI_DOMAIN}/{house_info_path}'])
+    csv_file.writerow(["'" + house_name + "'", house_rent, round(shortest_distance, 1), round(travel_time, 1),f'{CARDINALI_DOMAIN}/{house_info_path}'])
 
 def scrape_cardinali_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, float],
                      geocode_db : sqll.Connection, geocode_cur : sqll.Cursor

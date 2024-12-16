@@ -53,14 +53,13 @@ def process_MuiGrid(mui : BeautifulSoup,
     
     house_name = mui.find('h2').text
 
-    if re.match(re.compile(r"comercial|terreno$"), house_name, re.IGNORECASE): 
-        print(f'got here with: {house_name}')
+    if re.match(r"comercial|terreno", house_name, re.IGNORECASE): 
         return
     
-    house_link : str = 'https://roca.com.br' + (mui[0].find('a', href=True)['href'])
+    house_link : str = 'https://roca.com.br' + (mui.find('a', href=True)['href'])
     house_page = BeautifulSoup(requests.get(house_link).text, 'html.parser')
     house_rent = house_page.find(class_='MuiTypography-root PricesSidebar__CustomTypography-sc-1yjdceo-0 hJGMSK MuiTypography-body1').text   
-    location = house_page.find_all(class_="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorInherit")[2]
+    location = house_page.find_all(class_="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorInherit")[2].text
 
     house_location = find_loc_coordinates(location, geocode_db, geocode_db_cursor)
     if house_location == None:
@@ -69,8 +68,9 @@ def process_MuiGrid(mui : BeautifulSoup,
     house_node = ox.nearest_nodes(city_graph, X=house_location[1], Y=house_location[0])
     travel_time = nx.shortest_path_length(city_graph, house_node, destination, weight='travel_time') / 60
     shortest_distance = nx.shortest_path_length(city_graph, house_node, destination, weight='length')
+    house_rent = house_rent.removeprefix('R$ ').replace(',', '.')
 
-    csv_file.writerow([house_name, house_rent, round(shortest_distance, 1), round(travel_time, 1), house_link])
+    csv_file.writerow(["'" + house_name + "'", house_rent, round(shortest_distance, 1), round(travel_time, 1), house_link])
 
 def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, float],
                    geocode_db : sqll.Connection, geocode_cur : sqll.Cursor,
@@ -90,7 +90,7 @@ def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, fl
         start_of_scrape = time.time()
 
         with sync_playwright() as pw:
-            browser = pw.firefox.launch(headless=False)
+            browser = pw.firefox.launch()
             page = browser.new_page()
             
             #Removing the images while scraping because they are useless
