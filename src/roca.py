@@ -1,9 +1,6 @@
 import csv
 import _csv
 import time
-import sqlite3 as sqll
-import re
-import json
 
 import osmnx as ox
 import networkx as nx
@@ -39,9 +36,10 @@ def process_house(house : dict,
     if 'valCondominium' in house and house['valCondominium'] != None:
         rent += house['valCondominium']
 
-    csv_w.writerow([house['desTitleSite'].replace(',', ' '), rent, round(shortest_distance, 1), round(travel_time, 1), f'https://roca.com.br/imovel/locacao/{house['namCategory']}/sao-carlos/{house['namDistrict'].replace(' ', '-').lower()}/{house['idtProperty']}'])
+    csv_w.writerow([house['desTitleSite'].replace(',', ' '), rent, round(shortest_distance, 1), round(travel_time, 1), house['namDistrict'],f'https://roca.com.br/imovel/locacao/{house['namCategory']}/sao-carlos/{house['namDistrict'].replace(' ', '-').lower()}/{house['idtProperty']}'])
 
 def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, float],
+                   minimun : int, maximum : int, path_to_save : str,
                    ) -> None:
     
     destination_node = ox.nearest_nodes(sc_graph_map, X=destination[1], Y=destination[0])
@@ -49,10 +47,10 @@ def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, fl
     print(f'\033[0;32mScraping Roca\033[0m')
 
     #Current value starts with the minimum value
-    start_value = 300
-    end_value = 1700
+    start_value = minimun
+    end_value = maximum
 
-    with open('./scraped_data/roca.csv', 'w', newline='') as cardinali_csv:
+    with open(f'{path_to_save}/roca.csv', 'w', newline='') as cardinali_csv:
         ccsv = csv.writer(cardinali_csv, delimiter=',')
 
         start_of_scrape = time.time()

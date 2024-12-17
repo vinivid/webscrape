@@ -54,22 +54,23 @@ def card_process(card : BeautifulSoup,
     travel_time = nx.shortest_path_length(city_graph, house_node, destination, weight='travel_time') / 60
     shortest_distance = nx.shortest_path_length(city_graph, house_node, destination, weight='length')
 
-    csv_file.writerow([house_name.replace(',', ' '), house_rent, round(shortest_distance, 1), round(travel_time, 1),f'{CARDINALI_DOMAIN}/{house_info_path}'])
+    csv_file.writerow([house_name.replace(',', ' '), house_rent, round(travel_time, 1),round(shortest_distance, 1), location,f'{CARDINALI_DOMAIN}/{house_info_path}'])
 
 def scrape_cardinali_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, float],
-                     geocode_db : sqll.Connection, geocode_cur : sqll.Cursor
+                     geocode_db : sqll.Connection, geocode_cur : sqll.Cursor,
+                     minimum : int, maximum : int, path_to_save : str
                      ) -> None:
     
     destination_node = ox.nearest_nodes(sc_graph_map, X=destination[1], Y=destination[0])
 
     pag = 1
     cur_card = 1
-    vmin = 200
-    vmax = 1500
+    vmin = minimum
+    vmax = maximum
 
     print(f'\033[0;32mScraping Cardinali\033[0m')
 
-    with open('./scraped_data/cardinali.csv', 'w', newline='') as cardinali_csv:
+    with open(f'{path_to_save}/cardinali.csv', 'w', newline='') as cardinali_csv:
         ccsv = csv.writer(cardinali_csv, delimiter=',')
 
         start_of_scrape = time.time()

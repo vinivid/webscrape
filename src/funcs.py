@@ -11,9 +11,6 @@ def init_sqll_db() -> tuple[sqll.Connection, sqll.Cursor]:
     acess the Nominatian API for repeteadet locations.
     """
 
-    if not os.path.exists('./db'):
-        os.makedirs('./db')
-
     try:
         geocode_db = sqll.connect('./db/geocode.db')
         gcd_cur = geocode_db.cursor()

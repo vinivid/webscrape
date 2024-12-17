@@ -9,3 +9,4 @@ __pycache__
 build
 src/scrape_imobi.egg-info
 scraped_data
+roca.csv
