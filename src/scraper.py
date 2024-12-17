@@ -13,13 +13,13 @@ USP_COORDINATES = (-22.0062, -47.89518)
 
 def main():
     sc_graph = init_map_of_city()
-    geoc_db, geoc_cur = init_sqll_db()
+    #geoc_db, geoc_cur = init_sqll_db()
 
-    if not os.path.exists('./scraped_data'):
-        os.makedirs('./scraped_data')
+    #if not os.path.exists('./scraped_data'):
+    #    os.makedirs('./scraped_data')
 
-    scrape_cardinali_sc(sc_graph, USP_COORDINATES, geoc_db, geoc_cur)
-    scrape_roca_sc(sc_graph, USP_COORDINATES, geoc_db, geoc_cur)
+    #scrape_cardinali_sc(sc_graph, USP_COORDINATES, geoc_db, geoc_cur)
+    scrape_roca_sc(sc_graph, USP_COORDINATES)
 
 if __name__ == '__main__':
     main()

@@ -3,69 +3,14 @@ import _csv
 import time
 import sqlite3 as sqll
 import re
+import json
 
 import osmnx as ox
 import networkx as nx
-from playwright.sync_api import Page
-from playwright.sync_api import sync_playwright
 import requests
 from bs4 import BeautifulSoup
 
-from funcs import find_loc_coordinates
-
-def scroll_entire_houses_page(page : Page) -> None:
-    "Scroll to the bottom the houses page."
-
-    #Gets the number of houses that will be on this page so we can know how many times
-    #we will have to scroll to go to the bottom of the page.
-    page.wait_for_selector('h1')
-    qtt_of_houses = page.locator('h1').all_text_contents()[0].split()[0]
-
-    #Amount of scrolls necessary to scroll the whole page
-    num_scrolls = (int(qtt_of_houses, 10) // 12) + 1
-    
-    #https://roca.com.br/api/service/consult
-    #These wait times are hardcoded because the wait for response does'nt fucking work
-    #correctly, maybe the scrolls are not covering enough distance
-    page.wait_for_timeout(1500)
-
-    for _ in range(0, num_scrolls * 3):
-        page.mouse.wheel(0, 720)
-        page.wait_for_timeout(1500)
-
-def process_MuiGrid(mui : BeautifulSoup, 
-                    destination , city_graph : nx.MultiDiGraph,
-                    geocode_db : sqll.Connection, geocode_db_cursor : sqll.Cursor,
-                    csv_file : '_csv._writer') -> None:
-    
-    house_name = mui.find('h2').text
-    house_name = house_name.removeprefix('"').removesuffix('"')
-
-    if re.match(r"comercial|terreno", house_name, re.IGNORECASE): 
-        return
-    
-    house_link : str = 'https://roca.com.br' + (mui.find('a', href=True)['href'])
-    house_page = BeautifulSoup(requests.get(house_link).text, 'html.parser')
-    house_rent = house_page.find(class_='MuiTypography-root PricesSidebar__CustomTypography-sc-1yjdceo-0 hJGMSK MuiTypography-body1').text
-    house_rent = house_rent.removeprefix('R$ ').replace(',', '.')
-
-    if not house_rent[0].isdecimal():
-        return
-
-    location = house_page.find_all(class_="MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorInherit")[2].text
-    
-    house_location = find_loc_coordinates(location, geocode_db, geocode_db_cursor)
-    if house_location == None:
-        return
-
-    house_node = ox.nearest_nodes(city_graph, X=house_location[1], Y=house_location[0])
-    travel_time = nx.shortest_path_length(city_graph, house_node, destination, weight='travel_time') / 60
-    shortest_distance = nx.shortest_path_length(city_graph, house_node, destination, weight='length')
-
-    csv_file.writerow(["'" + house_name + "'", house_rent, round(shortest_distance, 1), round(travel_time, 1), house_link])
-
 def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, float],
-                   geocode_db : sqll.Connection, geocode_cur : sqll.Cursor,
                    ) -> None:
     
     destination_node = ox.nearest_nodes(sc_graph_map, X=destination[1], Y=destination[0])
@@ -81,27 +26,14 @@ def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, fl
 
         start_of_scrape = time.time()
 
-        with sync_playwright() as pw:
-            browser = pw.firefox.launch()
-            page = browser.new_page()
-            
-            #Removing the images while scraping because they are useless
-            page.route(re.compile(r"\.(jpg|png|svg)$"), lambda route: route.abort()) 
+        #page.goto(f'https://roca.com.br/alugar/sao-carlos-sp/de-{300}.00/ate-{1300}.00')
 
-            while curr_value < end_value:
-                page.goto(f'https://roca.com.br/alugar/sao-carlos-sp/de-{curr_value}.00/ate-{curr_value + 50}.00')
+        thingo = requests.post("https://roca.com.br/api/service/consult", headers={'content-type':'application/json; charset=utf-8'},data='{"start":0,"numRows":717,"type":"L","place":null,"idtCityList":[1],"idtDistrictList":[],"idtCondominiumList":[],"idtsCategories":[],"idtsSubCategories":[],"mapSubCategories":{},"rooms":null,"bathrooms":null,"garages":null,"characteristics":[],"condominiumCharacteristics":[],"fromPrice":"300.00","toPrice":"1300.00","minArea":null,"maxArea":null,"usefulArea":false,"namStreet":null,"searchTotal":false,"searchPrevisionOutput":false,"flgRentByPeriod":false,"idtsCampaigns":[],"getAccess":true,"post":true,"sortList":["moreRecentsLocation"],"fieldList":["idtProperty","jsonPhotos","jsonPhotosCondominium","namStreet","namDistrict","idtDistrict","namCity","idtCity","namState","namCategory","idtCategory","namSubCategory","idtSubCategory","prop_char_5","prop_char_1","prop_char_2","prop_char_95","prop_char_176","valLocation","valSales","valMonthIptu","valCondominium","numNumber","namCondominium","idtCondominium","latitude","longitude","latitudeAndLongitude","flgShowMapSite","indStatus","totalRooms","totalGarages","prop_char_12","idtsCharacteristics","idtsCondominiumCharacteristics","indType","flgHighlight","jsonCampaigns","campainSale","campainLocation","jsonOffers","flgHideValSaleSite","flgHideValLocationSite","flgRentByPeriod","idtsCaptivators","idtExternal","indApprovedDocumentationReserve","flgReservedLocation","flgReservedSale","flgPendingLocation","dtaPrevisionOutput","flgExclusiveLocation","flgExclusiveSale","desTitleSite","urlVideo","desUrl360Site","dtaExpirationAuthorizationCaptationLocation","dtaExpirationAuthorizationCaptationSales","valPercentageIptu","prop_char_106","prop_char_107"],"jsonPhotosNum":5}').json()
 
-                scroll_entire_houses_page(page)
+        with open('ok.json', 'w') as fl:
+            fl.write(json.dumps(thingo, indent=2))
 
-                soup = BeautifulSoup(page.content(), 'html.parser')
-                all_muis : list[BeautifulSoup] = soup.find_all(class_="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-md-6 MuiGrid-grid-lg-3")
-
-                for mui in all_muis:
-                    process_MuiGrid(mui, destination_node, sc_graph_map, geocode_db, geocode_cur, ccsv)
-
-                curr_value += 50
-
-            browser.close()
+        #browser.close()
         
         end_of_scrape = time.time()
         print(f'\033[0;32mRoca scraped sucessufuly\nScraping took {round((end_of_scrape - start_of_scrape)/60, 2)} min\033[0m')

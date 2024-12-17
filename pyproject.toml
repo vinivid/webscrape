@@ -11,8 +11,7 @@ dependencies = [
     'requests',
     'bs4',
     'osmnx',
-    'scikit-learn',
-    'playwright'
+    'scikit-learn'
 ]
 requires-python = ">=3.11"
 authors = [
