@@ -76,7 +76,6 @@ def scrape_cardinali_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[floa
         start_of_scrape = time.time()
 
         while True:
-            print(f'\033[0;36mCurrently on page {pag}\033[0m')
             response = None
             
             try:
@@ -90,7 +89,6 @@ def scrape_cardinali_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[floa
             card_blocks : list[BeautifulSoup] = houses_soup.find_all('div', class_="muda_card1 ms-lg-0 col-12 col-md-12 col-lg-6 col-xl-4 mt-4 d-flex align-self-stretch justify-content-center")
 
             for card in card_blocks:
-                print(f'\033[0;36mScraping page:{pag} Card: {cur_card}\033[0m')
                 card_process(card, destination_node, sc_graph_map, geocode_db, geocode_cur, ccsv)
 
                 cur_card += 1
