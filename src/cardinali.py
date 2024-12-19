@@ -76,12 +76,12 @@ def scrape_cardinali_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[floa
 
     print(f'\033[0;32mScraping Cardinali\033[0m')
 
-    with open(f'{path_to_save}/cardinali.csv', 'w', newline='') as cardinali_csv:
+    with open(f'{path_to_save}/cardinali.csv', 'w', newline='', encoding="utf-8") as cardinali_csv:
         ccsv = csv.writer(cardinali_csv, delimiter=',')
 
         start_of_scrape = time.time()
 
-        ccsv.writerow(['Mome da casa', 'Valor do aluguel', 'Tempo até a USP andando', 'Tamanho do menor caminho', 'Bairro', 'Link para a propriedade'])
+        ccsv.writerow(['Mome da casa', 'Valor do aluguel', 'Tempo ate a USP andando', 'Tamanho do menor caminho', 'Bairro', 'Link para a propriedade'])
 
         while True:
             response = None

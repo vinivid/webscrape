@@ -50,10 +50,10 @@ def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, fl
     start_value = minimun
     end_value = maximum
 
-    with open(f'{path_to_save}/roca.csv', 'w', newline='') as cardinali_csv:
+    with open(f'{path_to_save}/roca.csv', 'w', newline='', encoding="utf-8") as cardinali_csv:
         ccsv = csv.writer(cardinali_csv, delimiter=',')
         
-        ccsv.writerow(['Mome da casa', 'Valor do aluguel', 'Tempo até a USP andando', 'Tamanho do menor caminho', 'Bairro', 'Link para a propriedade'])
+        ccsv.writerow(['Mome da casa', 'Valor do aluguel', 'Tempo ate a USP andando', 'Tamanho do menor caminho', 'Bairro', 'Link para a propriedade'])
 
         start_of_scrape = time.time()
 
