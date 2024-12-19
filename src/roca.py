@@ -36,7 +36,7 @@ def process_house(house : dict,
     if 'valCondominium' in house and house['valCondominium'] != None:
         rent += house['valCondominium']
 
-    csv_w.writerow([house['desTitleSite'].replace(',', ' '), rent, round(shortest_distance, 1), round(travel_time, 1), house['namDistrict'],f'https://roca.com.br/imovel/locacao/{house['namCategory']}/sao-carlos/{house['namDistrict'].replace(' ', '-').lower()}/{house['idtProperty']}'])
+    csv_w.writerow([house['desTitleSite'].replace(',', ' '), rent, round(travel_time, 1) ,round(shortest_distance, 1), house['namDistrict'],f'https://roca.com.br/imovel/locacao/{house['namCategory']}/sao-carlos/{house['namDistrict'].replace(' ', '-').lower()}/{house['idtProperty']}'])
 
 def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, float],
                    minimun : int, maximum : int, path_to_save : str,
@@ -52,6 +52,8 @@ def scrape_roca_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[float, fl
 
     with open(f'{path_to_save}/roca.csv', 'w', newline='') as cardinali_csv:
         ccsv = csv.writer(cardinali_csv, delimiter=',')
+        
+        ccsv.writerow(['Mome da casa', 'Valor do aluguel', 'Tempo até a USP andando', 'Tamanho do menor caminho', 'Bairro', 'Link para a propriedade'])
 
         start_of_scrape = time.time()
 

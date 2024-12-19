@@ -29,6 +29,9 @@ def card_process(card : BeautifulSoup,
     #The path that contains the house info is in the links of the carrousell
     house_info_path = card.find('a')['href']
 
+    if 'comprar' in house_info_path:
+        return
+
     request = None
     try:
         request = requests.get(f'{CARDINALI_DOMAIN}/{house_info_path}')
@@ -40,6 +43,9 @@ def card_process(card : BeautifulSoup,
     #The rent value is located within a block of values, it is always contained in strong
     house_rent_block = house_info_soup.find(class_="valores_imovel p-3")
     house_rent = house_rent_block.find('strong').string.replace(',', '.')
+    if len(house_rent) > 6:
+        first_dot_pos = house_rent.find('.')
+        house_rent = house_rent[0 : first_dot_pos] + house_rent[first_dot_pos + 1:]
 
     #The location of the house is always in that class, not sure if there are ever any typos in it
     #that would make it so this way does not work
@@ -74,6 +80,8 @@ def scrape_cardinali_sc(sc_graph_map : nx.MultiDiGraph, destination : tuple[floa
         ccsv = csv.writer(cardinali_csv, delimiter=',')
 
         start_of_scrape = time.time()
+
+        ccsv.writerow(['Mome da casa', 'Valor do aluguel', 'Tempo até a USP andando', 'Tamanho do menor caminho', 'Bairro', 'Link para a propriedade'])
 
         while True:
             response = None
