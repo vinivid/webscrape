@@ -11,9 +11,11 @@ dependencies = [
     'requests',
     'bs4',
     'osmnx',
-    'scikit-learn'
+    'scikit-learn',
+    'unidecode'
 ]
 requires-python = ">=3.11"
+readme = "README.md"
 authors = [
     {name = 'Vínicius Souza Freitas', email = 'frato.vini@gmail.com'}
 ]

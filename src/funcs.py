@@ -25,14 +25,14 @@ def init_map_of_city() -> nx.MultiDiGraph:
     """
 
     if os.path.isfile('./scgraph/sc.graphml'):
-        print('Graph of the city already created, loading it.')
+        print('Grapho da cidade ja criado, carregando ele.')
         try:
             GRAPH_SAO_CARLOS = ox.load_graphml('./scgraph/sc.graphml')
             return GRAPH_SAO_CARLOS
         except IOError as error:
             raise SystemExit(error)
     else:
-        print('Graph has not been created, creating it.')
+        print('Grapho da cidade ainda não foi criado, criando ele.')
         GRAPH_SAO_CARLOS = ox.graph_from_place("São Carlos, São Paulo, Brazil", network_type='walk')
         nx.set_edge_attributes(GRAPH_SAO_CARLOS, 4.6, 'speed_kph')
         GRAPH_SAO_CARLOS = ox.distance.add_edge_lengths(GRAPH_SAO_CARLOS)

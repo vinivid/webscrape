@@ -1,5 +1,4 @@
 .venv
-ok.tst
 cache
 scgraph
 database
@@ -10,3 +9,4 @@ build
 src/scrape_imobi.egg-info
 scraped_data
 roca.csv
+auto
